@@ -93,8 +93,9 @@ func checkFuncNode(
 	comments []*ast.CommentGroup,
 	max int,
 ) {
-	// Collect the immediate (non-nested) FuncLit children so their comments
-	// can be excluded from this scope's budget.
+	// Collect FuncLit children that are direct descendants of this scope,
+	// i.e. not nested inside another FuncLit.  We stop descending into any
+	// FuncLit we find so that deeper ones are handled by the recursive call.
 	var directLits []*ast.FuncLit
 	if body != nil {
 		ast.Inspect(body, func(n ast.Node) bool {
@@ -171,6 +172,9 @@ func groupLineCount(fset *token.FileSet, group *ast.CommentGroup) int {
 // isNolintComment reports whether c is a //nolint directive.  Such lines are
 // excluded from the comment-line budget because they are tooling directives,
 // not documentation or narrative comments.
+//
+// Only single-line // comments are checked: golangci-lint's nolint mechanism
+// requires the //nolint form, so /* nolint */ block comments are not a concern.
 func isNolintComment(c *ast.Comment) bool {
 	text := strings.TrimSpace(strings.TrimPrefix(c.Text, "//"))
 	return strings.HasPrefix(text, "nolint")
