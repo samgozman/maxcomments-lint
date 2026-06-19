@@ -1,0 +1,14 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - maxcomments
+  settings:
+    custom:
+      maxcomments:
+        type: module
+        description: Limits the number of comment lines per function and per file.
+        settings:
+          max-func-lines: 15
+          max-file-lines: 150

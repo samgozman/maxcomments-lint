@@ -1,0 +1,20 @@
+# Used by `golangci-lint custom` to build a golangci-lint binary that
+# includes this plugin. Run from the repo root once you've cloned this
+# project locally.
+version: v2.12.2
+name: custom-gcl
+destination: ./bin
+
+plugins:
+  # Local development: build directly from this checkout.
+  # `import` must point at the package that actually calls register.Plugin
+  # (maxcomments/plugin.go) — not the bare module root, which has no .go
+  # files of its own.
+  - module: 'github.com/samgozman/maxcomments-lint'
+    import: 'github.com/samgozman/maxcomments-lint/maxcomments'
+    path: '.'
+
+  # Once published, swap the entry above for this instead:
+  # - module: 'github.com/samgozman/maxcomments-lint'
+  #   import: 'github.com/samgozman/maxcomments-lint/maxcomments'
+  #   version: v0.1.0
