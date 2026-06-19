@@ -78,12 +78,6 @@ nested funcs/closures, `//nolint` interaction, block comments).
 
 ## Known gaps (sketch-stage)
 
-- Doesn't yet special-case `//nolint:` directive lines (they'll count
-  toward the budget like any other comment).
-- Closures and nested function literals are only checked if they're
-  themselves top-level `FuncDecl`s — anonymous funcs inside a body are
-  currently folded into their enclosing function's total, not checked
-  individually.
 - No autofix.
 
 ## License
