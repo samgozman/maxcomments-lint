@@ -256,6 +256,18 @@ Each behaviour has its own `analysistest` fixture under
 
 - No autofix, by design. Fix flagged comments yourself, or ask an AI to
   summarise them down.
+- A function-level `//nolint` on a `func` *signature line* is matched by line
+  number — the same way golangci-lint applies `//nolint` to the diagnostics it
+  receives. In the rare case where two `func` tokens share one physical source
+  line (e.g. a one-line closure nested in another function), a trailing
+  `//nolint` on that line suppresses both. Keep each function on its own line —
+  which `gofmt` already does — to scope the directive precisely.
+
+## Contributing
+
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the
+workflow, project layout, and testing conventions. Notable changes are recorded
+in [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
