@@ -35,8 +35,14 @@ jobs:
       - name: Vet
         run: make vet
 
-      - name: Test (fails below 90% coverage)
+      - name: Test (fails below 90% coverage, generates coverage.out)
         run: make cover-check
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v7
+        with:
+          files: coverage.out
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   lint:
     name: Build plugin & self-lint
