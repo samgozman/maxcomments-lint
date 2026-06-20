@@ -14,7 +14,7 @@ plugins:
     import: 'github.com/samgozman/maxcomments-lint/maxcomments'
     path: '.'
 
-  # Once published, swap the entry above for this instead:
+  # Release builds: fetch the plugin from a tagged release on GitHub
   # - module: 'github.com/samgozman/maxcomments-lint'
   #   import: 'github.com/samgozman/maxcomments-lint/maxcomments'
   #   version: v0.1.0
