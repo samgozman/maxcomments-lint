@@ -5,4 +5,4 @@ package generatedcheck
 // generatedFunc has three doc comment lines
 // over the budget of two, and check-generated is
 // enabled, so it is reported despite being generated.
-func generatedFunc() {} // want `function "generatedFunc" has 3 doc comment lines, max allowed is 2 \(max-func-doc-lines\)`
+func generatedFunc() {} // want `function "generatedFunc" has 3 doc comment lines, max allowed is 2 \(func.doc-lines\)`

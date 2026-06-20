@@ -44,7 +44,7 @@ func TestRun_SourceReadErrorPropagates(t *testing.T) {
 	// in-memory filename does not exist, so the read fails and the error must
 	// propagate out of run.
 	pass, _ := newPass(t, "does-not-exist-9f3a.go", "package x\n\nfunc F() {}\n")
-	if _, err := run(pass, Settings{MaxFileRatio: 1}); err == nil {
+	if _, err := run(pass, Settings{File: FileSettings{Ratio: 1}}); err == nil {
 		t.Fatal("expected error when source file cannot be read, got nil")
 	}
 }
@@ -53,7 +53,7 @@ func TestRun_FileHardCapReports(t *testing.T) {
 	// Three doc-comment lines over a budget of one; the hard cap does not read
 	// source from disk, so an in-memory file is enough.
 	pass, diags := newPass(t, "x.go", "// one\n// two\n// three\npackage x\n")
-	if _, err := run(pass, Settings{MaxFileLines: 1}); err != nil {
+	if _, err := run(pass, Settings{File: FileSettings{Lines: 1}}); err != nil {
 		t.Fatalf("run: %v", err)
 	}
 	if len(*diags) == 0 {

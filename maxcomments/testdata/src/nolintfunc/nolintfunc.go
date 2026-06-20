@@ -15,4 +15,4 @@ func SuppressedByTrailing() {} //nolint:maxcomments
 // Reported has three doc comment lines over
 // the budget of two and carries no nolint
 // directive, so it is reported.
-func Reported() {} // want `function "Reported" has 3 doc comment lines, max allowed is 2 \(max-func-doc-lines\)`
+func Reported() {} // want `function "Reported" has 3 doc comment lines, max allowed is 2 \(func.doc-lines\)`

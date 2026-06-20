@@ -1,4 +1,4 @@
-package fileratio // want `file ".*fileratio.go" has 4 comment lines for 5 code lines, max allowed is 1 \(max-file-ratio\)`
+package fileratio // want `file ".*fileratio.go" has 4 comment lines for 5 code lines, max allowed is 1 \(file.ratio\)`
 
 // comment one
 // comment two

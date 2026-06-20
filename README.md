@@ -27,10 +27,10 @@ function that encloses it.
 For each function it tracks two **separate** totals:
 
 - **doc comments** — the block directly above `func ...`, governed by
-  `max-func-doc-lines`
+  `func.doc-lines`
 - **body comments** — every comment group whose source range falls inside the
   function body (minus anything that belongs to a nested closure), governed by
-  `max-func-lines` and `max-func-ratio`
+  `func.body-lines` and `func.ratio`
 
 Keeping them apart means a long, legitimate doc comment doesn't push a function
 over the budget meant to catch line-by-line *body* narration, and vice versa.
@@ -50,27 +50,45 @@ instructions, not documentation, so they are excluded from every total.
 You can use either or both, at function and/or file scope:
 
 1. **Hard cap** — a fixed maximum number of comment lines
-   (`max-func-lines`, `max-func-doc-lines`, `max-file-lines`).
+   (`func.body-lines`, `func.doc-lines`, `file.lines`).
 2. **Ratio** — at most one comment line per *N* code lines
-   (`max-func-ratio`, `max-file-ratio`). The allowed budget is
+   (`func.ratio`, `file.ratio`). The allowed budget is
    `floor(codeLines / N)`. A **code line** is a physical, non-blank line that
    is not itself a comment line. Use `ratio-min-lines` to exempt small scopes.
 
 ## Settings
 
-| Key                  | Type     | Default        | Description                                                                                |
-|----------------------|----------|----------------|--------------------------------------------------------------------------------------------|
-| `max-func-lines`     | int      | `0` (disabled) | Hard cap: max **body** comment lines allowed per function (doc comment excluded).          |
-| `max-func-doc-lines` | int      | `0` (disabled) | Hard cap: max **doc** comment lines allowed per function (the block above `func`).         |
-| `max-file-lines`     | int      | `0` (disabled) | Hard cap: max comment lines allowed per file.                                              |
-| `max-func-ratio`     | int      | `0` (disabled) | Ratio: allow 1 **body** comment line per this many code lines, per function.               |
-| `max-file-ratio`     | int      | `0` (disabled) | Ratio: allow 1 comment line per this many code lines, per file.                            |
-| `ratio-min-lines`    | int      | `0` (no floor) | Skip the ratio checks for any scope with fewer than this many code lines.                  |
-| `ignore`             | []string | `[]` (none)    | Regular expressions matched against each file's path; matching files are skipped entirely. |
-| `check-generated`    | bool     | `false`        | Check machine-generated files too. By default generated files are skipped.                 |
+Per-scope budgets are grouped under `func:` and `file:`; the remaining keys are
+scope-independent and stay at the top level.
+
+| Key               | Type     | Default        | Description                                                                                |
+|-------------------|----------|----------------|--------------------------------------------------------------------------------------------|
+| `func.body-lines` | int      | `0` (disabled) | Hard cap: max **body** comment lines allowed per function (doc comment excluded).          |
+| `func.doc-lines`  | int      | `0` (disabled) | Hard cap: max **doc** comment lines allowed per function (the block above `func`).         |
+| `func.ratio`      | int      | `0` (disabled) | Ratio: allow 1 **body** comment line per this many code lines, per function.               |
+| `file.lines`      | int      | `0` (disabled) | Hard cap: max comment lines allowed per file.                                              |
+| `file.ratio`      | int      | `0` (disabled) | Ratio: allow 1 comment line per this many code lines, per file.                            |
+| `ratio-min-lines` | int      | `0` (no floor) | Skip the ratio checks for any scope with fewer than this many code lines.                  |
+| `ignore`          | []string | `[]` (none)    | Regular expressions matched against each file's path; matching files are skipped entirely. |
+| `check-generated` | bool     | `false`        | Check machine-generated files too. By default generated files are skipped.                 |
+
+```yaml
+settings:
+  func:
+    body-lines: 3
+    doc-lines: 5
+    ratio: 8
+  file:
+    lines: 120
+    ratio: 5
+  ratio-min-lines: 10
+  ignore:
+    - 'testdata/'
+  check-generated: false
+```
 
 Every diagnostic ends with the name of the setting that triggered it — e.g.
-`... max allowed is 3 (max-func-lines)` — so you can tell which knob to tune
+`... max allowed is 3 (func.body-lines)` — so you can tell which knob to tune
 when more than one check is enabled.
 
 ### Suppressing with `//nolint`
@@ -152,11 +170,14 @@ linters:
         description: Limits the number of comment lines per function and per file.
         original-url: github.com/samgozman/maxcomments-lint
         settings:
-          max-func-lines: 15
-          max-file-lines: 150
-          # optional ratio mode (1 comment line per 10 code lines):
-          # max-func-ratio: 10
-          # max-file-ratio: 10
+          func:
+            body-lines: 5
+            doc-lines: 15
+            # optional ratio mode (1 body comment line per 10 code lines):
+            # ratio: 10
+          file:
+            lines: 150
+            # ratio: 10
           # ratio-min-lines: 10
           ignore:
             - 'vendor/'
@@ -178,13 +199,14 @@ go test ./...
 
 Each behaviour has its own `analysistest` fixture under
 `maxcomments/testdata/src/` (one package per scenario: `funclines`,
-`directives`, `closures`, `funcratio`, `fileratio`, `ratiomin`, `nolintfile`,
-`nolintfunc`, `ignore`), alongside white-box unit tests for the pure helpers
+`funcdoclines`, `directives`, `closures`, `funcratio`, `fileratio`,
+`ratiomin`, `nolintfile`, `nolintfunc`, `ignore`, `generated`,
+`generatedcheck`), alongside white-box unit tests for the pure helpers
 (`isDirective`, `ratioViolation`, `nolintForMaxcomments`, `matchesAny`).
 
 ## Known gaps
 
-- No autofix.
+- No autofix. (intentionally; suggest to fix comments manually or summarize them with AI)
 
 ## License
 

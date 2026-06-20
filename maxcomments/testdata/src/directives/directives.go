@@ -14,7 +14,7 @@ func WithDirective() {
 
 // TooMany has three real body comment lines, which is over the budget of two,
 // even though the directives below are never counted.
-func TooMany() { // want `function "TooMany" has 3 body comment lines, max allowed is 2`
+func TooMany() { // want `function "TooMany" has 3 body comment lines, max allowed is 2 \(func.body-lines\)`
 	//go:noinline
 	// real one (the trailing comment on the func line above also counts)
 	// real two
