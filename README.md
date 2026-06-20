@@ -7,14 +7,17 @@ A [golangci-lint](https://golangci-lint.run) module plugin that caps the
 number of **comment lines** allowed per function and/or per file.
 
 It doesn't judge comment *style* (use [godot](https://github.com/tetafro/godot)
-or `gocritic`/`revive` for that) — only comment *quantity*. The idea is to
-catch functions that have drifted into narrating every line instead of being
+or `gocritic`/`revive` for that), only comment *quantity*. The idea is to catch
+functions that have drifted into narrating every line instead of being
 simplified or split up.
 
 > **Handy against AI-generated noise.** Coding assistants love to narrate code
 > with a comment on nearly every line. Capping comment density nudges that
-> output back toward self-explanatory code (and the occasional comment that
-> earns its place), making it a lightweight guardrail in AI-assisted projects.
+> output back toward self-explanatory code, plus the occasional comment that
+> actually helps. It's a useful guardrail in AI-assisted projects. And because
+> it's a compiled check, it's *deterministic*: it enforces the limit on every
+> run, unlike an instruction in your prompt or rules file that the model may or
+> may not honour.
 
 ## How it counts
 
@@ -26,9 +29,9 @@ function that encloses it.
 
 For each function it tracks two **separate** totals:
 
-- **doc comments** — the block directly above `func ...`, governed by
+- **doc comments**: the block directly above `func ...`, governed by
   `func.doc-lines`
-- **body comments** — every comment group whose source range falls inside the
+- **body comments**: every comment group whose source range falls inside the
   function body (minus anything that belongs to a nested closure), governed by
   `func.body-lines` and `func.ratio`
 
@@ -49,9 +52,9 @@ instructions, not documentation, so they are excluded from every total.
 
 You can use either or both, at function and/or file scope:
 
-1. **Hard cap** — a fixed maximum number of comment lines
+1. **Hard cap**: a fixed maximum number of comment lines
    (`func.body-lines`, `func.doc-lines`, `file.lines`).
-2. **Ratio** — at most one comment line per *N* code lines
+2. **Ratio**: at most one comment line per *N* code lines
    (`func.ratio`, `file.ratio`). The allowed budget is
    `floor(codeLines / N)`. A **code line** is a physical, non-blank line that
    is not itself a comment line. Use `ratio-min-lines` to exempt small scopes.
@@ -87,8 +90,8 @@ settings:
   check-generated: false
 ```
 
-Every diagnostic ends with the name of the setting that triggered it — e.g.
-`... max allowed is 3 (func.body-lines)` — so you can tell which knob to tune
+Every diagnostic ends with the name of the setting that triggered it (e.g.
+`... max allowed is 3 (func.body-lines)`), so you can tell which knob to tune
 when more than one check is enabled.
 
 ### Suppressing with `//nolint`
@@ -117,7 +120,7 @@ An invalid regex is reported as an error rather than silently ignored.
 
 ### Generated files
 
-Machine-generated files are **skipped by default** — there's no point nudging
+Machine-generated files are **skipped by default**: there's no point nudging
 a code generator toward fewer comments. A file counts as generated when it
 carries the [standard Go marker](https://pkg.go.dev/cmd/go#hdr-Generate_Go_files_by_processing_source)
 (`// Code generated ... DO NOT EDIT.`) before its `package` clause.
@@ -134,7 +137,7 @@ generated files are skipped on top of them unless `check-generated` is set.
 
 ## Using it in a project
 
-Module plugins must be compiled into golangci-lint itself — see the
+Module plugins must be compiled into golangci-lint itself. See the
 [Module Plugin System docs](https://golangci-lint.run/docs/plugins/module-plugins/).
 You don't clone this repo; you reference it by version from your own project.
 
@@ -190,6 +193,51 @@ linters:
 ./custom-gcl run
 ```
 
+## Editor integration
+
+A custom golangci-lint binary works with your IDE just like the stock one. You
+only have to point the IDE at *your* binary (`./bin/custom-gcl`) instead of the
+one on your `PATH`. Build it first (see above), then configure the IDE.
+
+<details>
+<summary>JetBrains GoLand IDE</summary>
+
+1. Open **Settings → Go → Linters**.
+2. Tick **Execute 'golangci-lint run'** (and **'golangci-lint fmt'** if you
+   want formatting too).
+3. Set **Executable** to the absolute path of your custom binary, e.g.
+   `/path/to/your/project/bin/custom-gcl`.
+4. Tick **Use config** and point it at your `.golangci.yml`.
+5. Click **OK**. `maxcomments` now shows up in the linters list and its
+   warnings appear inline in the editor and in the **Problems** view.
+
+![GoLand linter settings](docs/goland-linter-settings.png)
+
+</details>
+
+## Running in CI
+
+CI is the same three steps as local use: install upstream golangci-lint, build
+the custom binary from `.custom-gcl.yml`, then lint with it. See the
+[`custom` command docs](https://golangci-lint.run/docs/plugins/module-plugins/)
+for details, and this repo's own [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
+for a working example:
+
+```yaml
+- name: Install golangci-lint
+  run: |
+    curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh \
+      | sh -s -- -b "$(go env GOPATH)/bin" v2.12.2
+
+- name: Build the custom binary
+  run: golangci-lint custom   # reads .custom-gcl.yml
+
+- name: Lint
+  run: ./bin/custom-gcl run
+```
+
+Keep the golangci-lint version pinned the same in `.custom-gcl.yml` and your CI.
+
 ## Development
 
 ```bash
@@ -206,8 +254,9 @@ Each behaviour has its own `analysistest` fixture under
 
 ## Known gaps
 
-- No autofix. (intentionally; suggest to fix comments manually or summarize them with AI)
+- No autofix, by design. Fix flagged comments yourself, or ask an AI to
+  summarise them down.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
