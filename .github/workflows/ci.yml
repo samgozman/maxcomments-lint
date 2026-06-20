@@ -29,14 +29,14 @@ jobs:
 
       - name: Verify go.mod/go.sum are tidy
         run: |
-          go mod tidy
+          make tidy
           git diff --exit-code go.mod go.sum
 
       - name: Vet
-        run: go vet ./...
+        run: make vet
 
-      - name: Test
-        run: go test -race -coverprofile=coverage.out ./...
+      - name: Test (fails below 90% coverage)
+        run: make cover-check
 
   lint:
     name: Build plugin & self-lint
@@ -59,7 +59,7 @@ jobs:
             | sh -s -- -b "$(go env GOPATH)/bin" "${GOLANGCI_LINT_VERSION}"
 
       - name: Build the plugin into a custom golangci-lint binary
-        run: golangci-lint custom
+        run: make build
 
       - name: Self-lint with the custom binary
-        run: ./bin/custom-gcl run
+        run: make run

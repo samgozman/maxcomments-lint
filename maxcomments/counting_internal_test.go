@@ -1,6 +1,32 @@
 package maxcomments
 
-import "testing"
+import (
+	"go/parser"
+	"go/token"
+	"testing"
+)
+
+func TestCodeLineCount_OutOfRange(t *testing.T) {
+	s := &sourceLines{lines: []string{"package x"}, commentLine: map[int]bool{}}
+	// The range runs past the only line; the out-of-range guard must skip the
+	// missing lines rather than index out of bounds.
+	if got := s.codeLineCount(1, 5); got != 1 {
+		t.Fatalf("codeLineCount(1, 5) = %d, want 1", got)
+	}
+}
+
+func TestNewSourceLines_ReadError(t *testing.T) {
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "missing-7b21.go", "package x\n", parser.ParseComments)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	// The file was parsed from memory and never written to disk, so reading it
+	// back must fail.
+	if _, err := newSourceLines(fset, file); err == nil {
+		t.Fatal("expected read error for missing file, got nil")
+	}
+}
 
 func TestRatioViolation(t *testing.T) {
 	tests := []struct {
