@@ -121,10 +121,14 @@ func isDirective(text string) bool {
 		return false
 	}
 	for i := 0; i < colon; i++ {
-		b := rest[i]
-		if !(b >= 'a' && b <= 'z' || b >= '0' && b <= '9') {
+		if !isLowerAlnum(rest[i]) {
 			return false
 		}
 	}
 	return true
+}
+
+// isLowerAlnum reports whether b is a lowercase ASCII letter or a digit.
+func isLowerAlnum(b byte) bool {
+	return b >= 'a' && b <= 'z' || b >= '0' && b <= '9'
 }

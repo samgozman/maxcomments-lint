@@ -1,7 +1,7 @@
 version: "2"
 
 linters:
-  default: none
+  default: standard
   enable:
     - maxcomments
   settings:
@@ -12,3 +12,5 @@ linters:
         settings:
           max-func-lines: 15
           max-file-lines: 150
+          ignore:
+            - 'testdata/'
