@@ -1,4 +1,4 @@
-package a
+package funclines
 
 // Short is fine.
 func Short() {}

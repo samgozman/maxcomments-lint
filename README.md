@@ -1,5 +1,8 @@
 # maxcomments-lint
 
+[![CI](https://github.com/samgozman/maxcomments-lint/actions/workflows/ci.yml/badge.svg)](https://github.com/samgozman/maxcomments-lint/actions/workflows/ci.yml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/samgozman/maxcomments-lint.svg)](https://pkg.go.dev/github.com/samgozman/maxcomments-lint)
+
 A [golangci-lint](https://golangci-lint.run) module plugin that caps the
 number of **comment lines** allowed per function and/or per file.
 
@@ -7,6 +10,11 @@ It doesn't judge comment *style* (use [godot](https://github.com/tetafro/godot)
 or `gocritic`/`revive` for that) — only comment *quantity*. The idea is to
 catch functions that have drifted into narrating every line instead of being
 simplified or split up.
+
+> **Handy against AI-generated noise.** Coding assistants love to narrate code
+> with a comment on nearly every line. Capping comment density nudges that
+> output back toward self-explanatory code (and the occasional comment that
+> earns its place), making it a lightweight guardrail in AI-assisted projects.
 
 ## How it counts
 
@@ -80,18 +88,27 @@ An invalid regex is reported as an error rather than silently ignored.
 
 ## Using it in a project
 
-### 1. Build a custom golangci-lint binary
-
 Module plugins must be compiled into golangci-lint itself — see the
 [Module Plugin System docs](https://golangci-lint.run/docs/plugins/module-plugins/).
+You don't clone this repo; you reference it by version from your own project.
 
-```bash
-git clone https://github.com/samgozman/maxcomments-lint.git
-cd maxcomments-lint
-golangci-lint custom   # reads .custom-gcl.yml, builds ./bin/custom-gcl
+### 1. Add a `.custom-gcl.yml` to your project root
+
+```yaml
+version: v2.12.2   # the golangci-lint version to build
+plugins:
+  - module: github.com/samgozman/maxcomments-lint
+    import: github.com/samgozman/maxcomments-lint/maxcomments
+    version: v0.1.0   # pin a released tag of this plugin
 ```
 
-### 2. Configure your project's `.golangci.yml`
+### 2. Build a custom golangci-lint binary
+
+```bash
+golangci-lint custom   # reads .custom-gcl.yml, builds ./custom-gcl
+```
+
+### 3. Configure your project's `.golangci.yml`
 
 ```yaml
 version: "2"
@@ -105,6 +122,7 @@ linters:
       maxcomments:
         type: module
         description: Limits the number of comment lines per function and per file.
+        original-url: github.com/samgozman/maxcomments-lint
         settings:
           max-func-lines: 15
           max-file-lines: 150
@@ -117,10 +135,10 @@ linters:
             - 'testdata/'
 ```
 
-### 3. Run it
+### 4. Run it
 
 ```bash
-./bin/custom-gcl run
+./custom-gcl run
 ```
 
 ## Development
@@ -131,9 +149,9 @@ go test ./...
 ```
 
 Each behaviour has its own `analysistest` fixture under
-`maxcomments/testdata/src/` (one package per scenario: `directives`,
-`closures`, `funcratio`, `fileratio`, `ratiomin`, `nolintfile`, `nolintfunc`,
-`ignore`), alongside white-box unit tests for the pure helpers
+`maxcomments/testdata/src/` (one package per scenario: `funclines`,
+`directives`, `closures`, `funcratio`, `fileratio`, `ratiomin`, `nolintfile`,
+`nolintfunc`, `ignore`), alongside white-box unit tests for the pure helpers
 (`isDirective`, `ratioViolation`, `nolintForMaxcomments`, `matchesAny`).
 
 ## Known gaps

@@ -1,5 +1,7 @@
 BINARY := ./bin/custom-gcl
 
+COVERAGE_MIN := 90
+
 .DEFAULT_GOAL := help
 
 .PHONY: help
@@ -17,7 +19,22 @@ run: ## Lint this repo with the custom binary
 
 .PHONY: test
 test: ## Run the Go test suite
-	go test ./... -v
+	go test -race -v ./...
+
+.PHONY: test-cov
+test-cov: ## Run the Go test suite with coverage
+	go test -race -coverprofile=coverage.out ./...
+
+.PHONY: cover-check
+cover-check: test-cov ## Run tests with coverage and fail below COVERAGE_MIN
+	@total=$$(go tool cover -func=coverage.out | awk '/^total:/ {print $$3}' | tr -d '%'); \
+	echo "total coverage: $$total% (minimum $(COVERAGE_MIN)%)"; \
+	awk "BEGIN { exit !($$total >= $(COVERAGE_MIN)) }" || \
+		{ echo "FAIL: coverage $$total% is below minimum $(COVERAGE_MIN)%"; exit 1; }
+
+.PHONY: vet
+vet: ## Run go vet
+	go vet ./...
 
 .PHONY: tidy
 tidy: ## Tidy module dependencies
