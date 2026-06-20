@@ -9,13 +9,12 @@ package maxcomments
 
 import (
 	"go/ast"
-	"go/token"
 
 	"golang.org/x/tools/go/analysis"
 )
 
-// Settings configures the maxcomments analyzer. Both fields are optional;
-// a value of 0 disables that particular check.
+// Settings configures the maxcomments analyzer. Every field is optional; a
+// value of 0 (or, for Ignore, an empty list) disables that particular check.
 type Settings struct {
 	// MaxFuncLines is the maximum number of comment lines allowed inside a
 	// single function, counting its doc comment plus any comments in its
@@ -26,6 +25,25 @@ type Settings struct {
 	// single file, counting every comment group in the file. 0 disables
 	// the check.
 	MaxFileLines int `json:"max-file-lines"`
+
+	// MaxFuncRatio enables the per-function comments-to-code ratio check: at
+	// most one comment line is allowed per MaxFuncRatio code lines (so the
+	// allowed budget is floor(codeLines / MaxFuncRatio)). 0 disables it.
+	MaxFuncRatio int `json:"max-func-ratio"`
+
+	// MaxFileRatio enables the same ratio check at file scope: at most one
+	// comment line per MaxFileRatio code lines in the file. 0 disables it.
+	MaxFileRatio int `json:"max-file-ratio"`
+
+	// RatioMinLines suppresses the ratio checks for any scope with fewer than
+	// this many code lines, so small functions are not penalised. 0 means no
+	// floor (the ratio applies to every scope).
+	RatioMinLines int `json:"ratio-min-lines"`
+
+	// Ignore is a list of regular expressions matched against each file's
+	// path. A file whose path matches any pattern is skipped entirely. An
+	// empty list checks every file.
+	Ignore []string `json:"ignore"`
 }
 
 // NewAnalyzer builds the comment-budget analyzer for the given settings.
@@ -40,74 +58,109 @@ func NewAnalyzer(settings Settings) *analysis.Analyzer {
 }
 
 func run(pass *analysis.Pass, settings Settings) (interface{}, error) {
+	ignore, err := compileIgnore(settings.Ignore)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, file := range pass.Files {
-		checkFile(pass, file, settings)
+		if matchesAny(ignore, fileName(pass, file)) {
+			continue
+		}
+
+		if err := checkFile(pass, file, settings); err != nil {
+			return nil, err
+		}
 	}
 
 	return nil, nil
 }
 
-func checkFile(pass *analysis.Pass, file *ast.File, settings Settings) {
-	if settings.MaxFileLines > 0 {
-		total := 0
-		for _, group := range file.Comments {
-			total += groupLineCount(pass.Fset, group)
+func checkFile(pass *analysis.Pass, file *ast.File, settings Settings) error {
+	// Reading source is only needed by the ratio checks, so do it lazily.
+	var src *sourceLines
+	if settings.MaxFuncRatio > 0 || settings.MaxFileRatio > 0 {
+		s, err := newSourceLines(pass.Fset, file)
+		if err != nil {
+			return err
 		}
-
-		if total > settings.MaxFileLines {
-			pass.Reportf(file.Package, "file %q has %d comment lines, max allowed is %d",
-				fileName(pass, file), total, settings.MaxFileLines)
-		}
+		src = s
 	}
 
-	if settings.MaxFuncLines <= 0 {
-		return
+	nolint := collectNolint(pass.Fset, file)
+
+	if !nolint.fileSuppressed {
+		checkFileBudget(pass, file, settings, src)
 	}
 
-	for _, decl := range file.Decls {
-		fn, ok := decl.(*ast.FuncDecl)
-		if !ok {
+	if settings.MaxFuncLines <= 0 && settings.MaxFuncRatio <= 0 {
+		return nil
+	}
+
+	for _, scope := range collectFuncScopes(file) {
+		if nolint.suppressesScope(pass.Fset, scope) {
 			continue
 		}
-
-		checkFunc(pass, fn, file.Comments, settings.MaxFuncLines)
+		checkScope(pass, scope, settings, src)
 	}
+
+	return nil
 }
 
-func checkFunc(pass *analysis.Pass, fn *ast.FuncDecl, comments []*ast.CommentGroup, max int) {
+func checkFileBudget(pass *analysis.Pass, file *ast.File, settings Settings, src *sourceLines) {
 	total := 0
-
-	if fn.Doc != nil {
-		total += groupLineCount(pass.Fset, fn.Doc)
+	for _, group := range file.Comments {
+		total += commentLineCount(pass.Fset, group)
 	}
 
-	for _, group := range comments {
-		if group == fn.Doc {
-			continue
-		}
-
-		if group.Pos() >= fn.Pos() && group.End() <= fn.End() {
-			total += groupLineCount(pass.Fset, group)
-		}
+	if settings.MaxFileLines > 0 && total > settings.MaxFileLines {
+		pass.Reportf(file.Package, "file %q has %d comment lines, max allowed is %d",
+			fileName(pass, file), total, settings.MaxFileLines)
 	}
 
-	if total > max {
-		pass.Reportf(fn.Pos(), "function %q has %d comment lines, max allowed is %d",
-			fn.Name.Name, total, max)
+	if settings.MaxFileRatio > 0 && src != nil {
+		code := src.codeLineCount(1, src.lineCount())
+		if allowed, violated := ratioViolation(total, code, settings.MaxFileRatio, settings.RatioMinLines); violated {
+			pass.Reportf(file.Package,
+				"file %q has %d comment lines for %d code lines, max allowed is %d",
+				fileName(pass, file), total, code, allowed)
+		}
 	}
 }
 
-// groupLineCount returns how many source lines a comment group spans,
-// correctly handling both stacked "//" lines and multi-line "/* */" blocks.
-func groupLineCount(fset *token.FileSet, group *ast.CommentGroup) int {
-	if group == nil {
-		return 0
+func checkScope(pass *analysis.Pass, scope *funcScope, settings Settings, src *sourceLines) {
+	total := commentLineCount(pass.Fset, scope.doc)
+	for _, group := range scope.comments {
+		total += commentLineCount(pass.Fset, group)
 	}
 
-	start := fset.Position(group.Pos()).Line
-	end := fset.Position(group.End()).Line
+	if settings.MaxFuncLines > 0 && total > settings.MaxFuncLines {
+		pass.Reportf(scope.node.Pos(), "%s has %d comment lines, max allowed is %d",
+			scope.name, total, settings.MaxFuncLines)
+	}
 
-	return end - start + 1
+	if settings.MaxFuncRatio > 0 && src != nil {
+		start := pass.Fset.Position(scope.node.Pos()).Line
+		end := pass.Fset.Position(scope.node.End()).Line
+		code := src.codeLineCount(start, end)
+		if allowed, violated := ratioViolation(total, code, settings.MaxFuncRatio, settings.RatioMinLines); violated {
+			pass.Reportf(scope.node.Pos(),
+				"%s has %d comment lines for %d code lines, max allowed is %d",
+				scope.name, total, code, allowed)
+		}
+	}
+}
+
+// ratioViolation reports whether commentLines exceeds the budget implied by
+// allowing one comment line per `ratio` code lines. Scopes with fewer than
+// minLines code lines are exempt. The returned allowed value is the budget.
+func ratioViolation(commentLines, codeLines, ratio, minLines int) (allowed int, violated bool) {
+	if ratio <= 0 || codeLines < minLines {
+		return 0, false
+	}
+
+	allowed = codeLines / ratio
+	return allowed, commentLines > allowed
 }
 
 func fileName(pass *analysis.Pass, file *ast.File) string {
