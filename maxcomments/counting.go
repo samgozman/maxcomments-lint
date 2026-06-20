@@ -15,8 +15,7 @@ type sourceLines struct {
 }
 
 // newSourceLines reads the file backing the AST from disk and records which
-// lines comments occupy. The source is needed because a token.FileSet knows
-// line offsets but not whether a line is blank.
+// lines comments occupy, so the ratio check can tell blank/comment from code.
 func newSourceLines(fset *token.FileSet, file *ast.File) (*sourceLines, error) {
 	filename := fset.Position(file.Pos()).Filename
 
@@ -25,25 +24,48 @@ func newSourceLines(fset *token.FileSet, file *ast.File) (*sourceLines, error) {
 		return nil, err
 	}
 
+	lines := strings.Split(string(src), "\n")
+
 	commentLine := make(map[int]bool)
 	for _, group := range file.Comments {
 		for _, c := range group.List {
-			start := fset.Position(c.Pos()).Line
+			start := fset.Position(c.Pos())
 			end := fset.Position(c.End()).Line
-			for ln := start; ln <= end; ln++ {
+
+			// A trailing comment (preceded by code on its line) leaves that line
+			// code; only its continuation lines, if any, are pure comment.
+			first := start.Line
+			if codeBefore(lines, start.Line, start.Column) {
+				first++
+			}
+			for ln := first; ln <= end; ln++ {
 				commentLine[ln] = true
 			}
 		}
 	}
 
 	return &sourceLines{
-		lines:       strings.Split(string(src), "\n"),
+		lines:       lines,
 		commentLine: commentLine,
 	}, nil
 }
 
-// codeLineCount returns how many lines in [start, end] are code: not blank and
-// not occupied by a comment.
+// codeBefore reports whether non-whitespace precedes column col (1-based bytes)
+// on the given line — i.e. a comment there is trailing, not whole-line.
+func codeBefore(lines []string, line, col int) bool {
+	if col < 2 || line < 1 || line > len(lines) {
+		return false
+	}
+
+	prefix := lines[line-1]
+	if col-1 < len(prefix) {
+		prefix = prefix[:col-1]
+	}
+
+	return strings.TrimSpace(prefix) != ""
+}
+
+// codeLineCount returns how many lines in [start, end] are non-blank code.
 func (s *sourceLines) codeLineCount(start, end int) int {
 	count := 0
 	for ln := start; ln <= end; ln++ {
@@ -88,9 +110,8 @@ func commentLineCount(fset *token.FileSet, group *ast.CommentGroup) int {
 }
 
 // isDirective reports whether a comment is a machine directive rather than
-// prose, so it should not count toward a budget. It recognizes Go's directive
-// convention (no space after "//", a "tool:" prefix, or a "line " directive)
-// plus golangci-lint's "//nolint" directives.
+// prose, so it is not counted. It recognizes Go's "//tool:..." and "//line "
+// directives plus golangci-lint's "//nolint".
 func isDirective(text string) bool {
 	rest, ok := strings.CutPrefix(text, "//")
 	if !ok {
@@ -105,12 +126,17 @@ func isDirective(text string) bool {
 		return true
 	}
 
-	// Go tool directive "//word:..." — lowercase word, no leading space, colon, then more.
+	// Go tool directive "//word:x": a lowercase-alnum name, a colon, then a
+	// lowercase-alnum char. That final check keeps "//note: foo" and "//https://"
+	// (space or slash after the colon) as prose, matching go/ast.isDirective.
 	colon := strings.IndexByte(rest, ':')
 	if colon <= 0 || colon+1 >= len(rest) {
 		return false
 	}
-	for i := 0; i < colon; i++ {
+	for i := 0; i <= colon+1; i++ {
+		if i == colon {
+			continue
+		}
 		if !isLowerAlnum(rest[i]) {
 			return false
 		}

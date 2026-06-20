@@ -3,6 +3,8 @@ package maxcomments
 import (
 	"go/parser"
 	"go/token"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -12,6 +14,32 @@ func TestCodeLineCount_OutOfRange(t *testing.T) {
 	// missing lines rather than index out of bounds.
 	if got := s.codeLineCount(1, 5); got != 1 {
 		t.Fatalf("codeLineCount(1, 5) = %d, want 1", got)
+	}
+}
+
+func TestNewSourceLines_TrailingCommentIsCode(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "x.go")
+	// Line 4 has a trailing comment but is real code; line 5 is comment-only.
+	src := "package x\n\nfunc f() {\n\tx := 1 // trailing\n\t// standalone\n\ty := 2\n}\n"
+	if err := os.WriteFile(path, []byte(src), 0o600); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, path, src, parser.ParseComments)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+
+	sl, err := newSourceLines(fset, file)
+	if err != nil {
+		t.Fatalf("newSourceLines: %v", err)
+	}
+
+	// Lines 3-7 are func/x/standalone/y/} — four code, one comment-only.
+	if got := sl.codeLineCount(3, 7); got != 4 {
+		t.Fatalf("codeLineCount(3, 7) = %d, want 4 (trailing-comment line counts as code)", got)
 	}
 }
 
@@ -65,6 +93,11 @@ func TestIsDirective(t *testing.T) {
 	}{
 		{"plain line comment", "// a normal sentence", false},
 		{"plain word with colon and space after", "// note: this is prose", false},
+		{"no-space word with colon and space after", "//note: this is prose", false},
+		{"todo with colon", "//todo: fix this later", false},
+		{"http url", "//http://example.com/path", false},
+		{"https url", "//https://example.com", false},
+		{"minimal tool directive", "//x:y", true},
 		{"go generate", "//go:generate stringer -type=Foo", true},
 		{"go embed", "//go:embed files", true},
 		{"line directive", "//line foo.go:16", true},

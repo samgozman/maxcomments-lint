@@ -9,7 +9,7 @@ func SmallExempt() {
 	_ = a
 }
 
-func LargeFlagged() { // want `function "LargeFlagged" has 3 body comment lines for 7 code lines, max allowed is 2 \(func.ratio\)`
+func LargeFlagged() { // want `function "LargeFlagged" has 3 body comment lines for 8 code lines, max allowed is 2 \(func.ratio\)`
 	// note one
 	// note two
 	b := 1
