@@ -17,7 +17,11 @@ run: ## Lint this repo with the custom binary
 
 .PHONY: test
 test: ## Run the Go test suite
-	go test ./... -v
+	go test -race -v ./...
+
+.PHONY: test-cov
+test-cov: ## Run the Go test suite with coverage
+	go test -race -coverprofile=coverage.out ./...
 
 .PHONY: tidy
 tidy: ## Tidy module dependencies

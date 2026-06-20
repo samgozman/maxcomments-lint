@@ -11,7 +11,7 @@ import (
 func TestAnalyzer_FuncBudget(t *testing.T) {
 	testdata := analysistest.TestData()
 	analyzer := maxcomments.NewAnalyzer(maxcomments.Settings{MaxFuncLines: 2})
-	analysistest.Run(t, testdata, analyzer, "a")
+	analysistest.Run(t, testdata, analyzer, "funclines")
 }
 
 func TestAnalyzer_ExcludesDirectives(t *testing.T) {

@@ -11,6 +11,11 @@ or `gocritic`/`revive` for that) — only comment *quantity*. The idea is to
 catch functions that have drifted into narrating every line instead of being
 simplified or split up.
 
+> **Handy against AI-generated noise.** Coding assistants love to narrate code
+> with a comment on nearly every line. Capping comment density nudges that
+> output back toward self-explanatory code (and the occasional comment that
+> earns its place), making it a lightweight guardrail in AI-assisted projects.
+
 ## How it counts
 
 Every function is checked independently. A "function" here is any named
@@ -144,9 +149,9 @@ go test ./...
 ```
 
 Each behaviour has its own `analysistest` fixture under
-`maxcomments/testdata/src/` (one package per scenario: `directives`,
-`closures`, `funcratio`, `fileratio`, `ratiomin`, `nolintfile`, `nolintfunc`,
-`ignore`), alongside white-box unit tests for the pure helpers
+`maxcomments/testdata/src/` (one package per scenario: `funclines`,
+`directives`, `closures`, `funcratio`, `fileratio`, `ratiomin`, `nolintfile`,
+`nolintfunc`, `ignore`), alongside white-box unit tests for the pure helpers
 (`isDirective`, `ratioViolation`, `nolintForMaxcomments`, `matchesAny`).
 
 ## Known gaps
