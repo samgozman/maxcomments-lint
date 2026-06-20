@@ -11,7 +11,11 @@ linters:
         description: Limits the number of comment lines per function and per file.
         original-url: github.com/samgozman/maxcomments-lint
         settings:
-          max-func-lines: 15
-          max-file-lines: 150
-          ignore:
+          max-func-lines: 3       # hard cap: ≤3 comment lines per function
+          max-file-lines: 120     # hard cap: ≤120 comment lines per file
+          max-func-ratio: 8       # dynamic: ≤1 comment line per 8 code lines, per function
+          max-file-ratio: 5       # dynamic: ≤1 comment line per 5 code lines, per file
+          ratio-min-lines: 10     # skip the ratio checks for scopes under 10 code lines
+          check-generated: false  # skip generated files (`// Code generated ... DO NOT EDIT.`)
+          ignore: # regexps vs. file path; matches are skipped entirely
             - 'testdata/'
