@@ -51,13 +51,14 @@ func NewAnalyzer(settings Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name: "maxcomments",
 		Doc:  "reports functions or files whose comments exceed a configured line budget",
-		Run: func(pass *analysis.Pass) (interface{}, error) {
+		URL:  "https://github.com/samgozman/maxcomments-lint",
+		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, settings)
 		},
 	}
 }
 
-func run(pass *analysis.Pass, settings Settings) (interface{}, error) {
+func run(pass *analysis.Pass, settings Settings) (any, error) {
 	ignore, err := compileIgnore(settings.Ignore)
 	if err != nil {
 		return nil, err
