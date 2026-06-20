@@ -5,7 +5,7 @@
 // needs simplifying rather than narrating. This linter does not judge
 // comment quality -- only quantity -- so it pairs well with other linters
 // that check comment style (godot, gocritic, revive).
-package maxcomments
+package maxcomments //nolint:maxcomments
 
 import (
 	"go/ast"

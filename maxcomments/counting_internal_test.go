@@ -21,8 +21,7 @@ func TestNewSourceLines_ReadError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	// The file was parsed from memory and never written to disk, so reading it
-	// back must fail.
+	// Parsed from memory, never written to disk, so reading it back must fail.
 	if _, err := newSourceLines(fset, file); err == nil {
 		t.Fatal("expected read error for missing file, got nil")
 	}
