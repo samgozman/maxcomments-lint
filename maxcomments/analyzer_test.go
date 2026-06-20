@@ -14,6 +14,12 @@ func TestAnalyzer_FuncBudget(t *testing.T) {
 	analysistest.Run(t, testdata, analyzer, "funclines")
 }
 
+func TestAnalyzer_FuncDocBudget(t *testing.T) {
+	testdata := analysistest.TestData()
+	analyzer := maxcomments.NewAnalyzer(maxcomments.Settings{MaxFuncDocLines: 2})
+	analysistest.Run(t, testdata, analyzer, "funcdoclines")
+}
+
 func TestAnalyzer_ExcludesDirectives(t *testing.T) {
 	testdata := analysistest.TestData()
 	analyzer := maxcomments.NewAnalyzer(maxcomments.Settings{MaxFuncLines: 2})
@@ -46,33 +52,33 @@ func TestAnalyzer_RatioMinLines(t *testing.T) {
 
 func TestAnalyzer_NolintFile(t *testing.T) {
 	testdata := analysistest.TestData()
-	analyzer := maxcomments.NewAnalyzer(maxcomments.Settings{MaxFileLines: 2, MaxFuncLines: 2})
+	analyzer := maxcomments.NewAnalyzer(maxcomments.Settings{MaxFileLines: 2, MaxFuncDocLines: 2})
 	analysistest.Run(t, testdata, analyzer, "nolintfile")
 }
 
 func TestAnalyzer_NolintFunc(t *testing.T) {
 	testdata := analysistest.TestData()
-	analyzer := maxcomments.NewAnalyzer(maxcomments.Settings{MaxFuncLines: 2})
+	analyzer := maxcomments.NewAnalyzer(maxcomments.Settings{MaxFuncDocLines: 2})
 	analysistest.Run(t, testdata, analyzer, "nolintfunc")
 }
 
 func TestAnalyzer_IgnorePaths(t *testing.T) {
 	testdata := analysistest.TestData()
 	analyzer := maxcomments.NewAnalyzer(maxcomments.Settings{
-		MaxFuncLines: 2,
-		Ignore:       []string{`ignored\.go$`},
+		MaxFuncDocLines: 2,
+		Ignore:          []string{`ignored\.go$`},
 	})
 	analysistest.Run(t, testdata, analyzer, "ignore")
 }
 
 func TestAnalyzer_SkipsGeneratedByDefault(t *testing.T) {
 	testdata := analysistest.TestData()
-	analyzer := maxcomments.NewAnalyzer(maxcomments.Settings{MaxFuncLines: 2})
+	analyzer := maxcomments.NewAnalyzer(maxcomments.Settings{MaxFuncDocLines: 2})
 	analysistest.Run(t, testdata, analyzer, "generated")
 }
 
 func TestAnalyzer_ChecksGeneratedWhenEnabled(t *testing.T) {
 	testdata := analysistest.TestData()
-	analyzer := maxcomments.NewAnalyzer(maxcomments.Settings{MaxFuncLines: 2, CheckGenerated: true})
+	analyzer := maxcomments.NewAnalyzer(maxcomments.Settings{MaxFuncDocLines: 2, CheckGenerated: true})
 	analysistest.Run(t, testdata, analyzer, "generatedcheck")
 }

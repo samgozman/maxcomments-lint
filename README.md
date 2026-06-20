@@ -24,11 +24,16 @@ Each comment is attributed to the *innermost* function that contains it, so a
 closure's comments are counted against the closure and never folded into the
 function that encloses it.
 
-For each function it sums:
+For each function it tracks two **separate** totals:
 
-- the function's doc comment (the block directly above `func ...`)
-- every comment group whose source range falls inside the function body
-  (minus anything that belongs to a nested closure)
+- **doc comments** — the block directly above `func ...`, governed by
+  `max-func-doc-lines`
+- **body comments** — every comment group whose source range falls inside the
+  function body (minus anything that belongs to a nested closure), governed by
+  `max-func-lines` and `max-func-ratio`
+
+Keeping them apart means a long, legitimate doc comment doesn't push a function
+over the budget meant to catch line-by-line *body* narration, and vice versa.
 
 Multi-line `/* */` blocks and stacks of consecutive `//` lines are each
 counted by their actual line span, not by "number of `//` tokens."
@@ -45,7 +50,7 @@ instructions, not documentation, so they are excluded from every total.
 You can use either or both, at function and/or file scope:
 
 1. **Hard cap** — a fixed maximum number of comment lines
-   (`max-func-lines`, `max-file-lines`).
+   (`max-func-lines`, `max-func-doc-lines`, `max-file-lines`).
 2. **Ratio** — at most one comment line per *N* code lines
    (`max-func-ratio`, `max-file-ratio`). The allowed budget is
    `floor(codeLines / N)`. A **code line** is a physical, non-blank line that
@@ -53,15 +58,20 @@ You can use either or both, at function and/or file scope:
 
 ## Settings
 
-| Key               | Type     | Default        | Description                                                                                |
-|-------------------|----------|----------------|--------------------------------------------------------------------------------------------|
-| `max-func-lines`  | int      | `0` (disabled) | Hard cap: max comment lines allowed per function.                                          |
-| `max-file-lines`  | int      | `0` (disabled) | Hard cap: max comment lines allowed per file.                                              |
-| `max-func-ratio`  | int      | `0` (disabled) | Ratio: allow 1 comment line per this many code lines, per function.                        |
-| `max-file-ratio`  | int      | `0` (disabled) | Ratio: allow 1 comment line per this many code lines, per file.                            |
-| `ratio-min-lines` | int      | `0` (no floor) | Skip the ratio checks for any scope with fewer than this many code lines.                  |
-| `ignore`          | []string | `[]` (none)    | Regular expressions matched against each file's path; matching files are skipped entirely. |
-| `check-generated` | bool     | `false`        | Check machine-generated files too. By default generated files are skipped.                 |
+| Key                  | Type     | Default        | Description                                                                                |
+|----------------------|----------|----------------|--------------------------------------------------------------------------------------------|
+| `max-func-lines`     | int      | `0` (disabled) | Hard cap: max **body** comment lines allowed per function (doc comment excluded).          |
+| `max-func-doc-lines` | int      | `0` (disabled) | Hard cap: max **doc** comment lines allowed per function (the block above `func`).         |
+| `max-file-lines`     | int      | `0` (disabled) | Hard cap: max comment lines allowed per file.                                              |
+| `max-func-ratio`     | int      | `0` (disabled) | Ratio: allow 1 **body** comment line per this many code lines, per function.               |
+| `max-file-ratio`     | int      | `0` (disabled) | Ratio: allow 1 comment line per this many code lines, per file.                            |
+| `ratio-min-lines`    | int      | `0` (no floor) | Skip the ratio checks for any scope with fewer than this many code lines.                  |
+| `ignore`             | []string | `[]` (none)    | Regular expressions matched against each file's path; matching files are skipped entirely. |
+| `check-generated`    | bool     | `false`        | Check machine-generated files too. By default generated files are skipped.                 |
+
+Every diagnostic ends with the name of the setting that triggered it — e.g.
+`... max allowed is 3 (max-func-lines)` — so you can tell which knob to tune
+when more than one check is enabled.
 
 ### Suppressing with `//nolint`
 

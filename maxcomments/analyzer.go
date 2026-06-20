@@ -16,19 +16,25 @@ import (
 // Settings configures the maxcomments analyzer. Every field is optional; a
 // value of 0 (or, for Ignore, an empty list) disables that particular check.
 type Settings struct {
-	// MaxFuncLines is the maximum number of comment lines allowed inside a
-	// single function, counting its doc comment plus any comments in its
-	// body. 0 disables the check.
+	// MaxFuncLines is the maximum number of body comment lines allowed inside
+	// a single function: comments within the function body, excluding the doc
+	// comment (which MaxFuncDocLines governs). 0 disables the check.
 	MaxFuncLines int `json:"max-func-lines"`
+
+	// MaxFuncDocLines is the maximum number of doc comment lines allowed on a
+	// single function: the comment block directly above its `func` keyword.
+	// 0 disables the check.
+	MaxFuncDocLines int `json:"max-func-doc-lines"`
 
 	// MaxFileLines is the maximum number of comment lines allowed in a
 	// single file, counting every comment group in the file. 0 disables
 	// the check.
 	MaxFileLines int `json:"max-file-lines"`
 
-	// MaxFuncRatio enables the per-function comments-to-code ratio check: at
-	// most one comment line is allowed per MaxFuncRatio code lines (so the
-	// allowed budget is floor(codeLines / MaxFuncRatio)). 0 disables it.
+	// MaxFuncRatio enables the per-function body-comments-to-code ratio check:
+	// at most one body comment line is allowed per MaxFuncRatio code lines (so
+	// the allowed budget is floor(codeLines / MaxFuncRatio)). Doc comments are
+	// not included. 0 disables it.
 	MaxFuncRatio int `json:"max-func-ratio"`
 
 	// MaxFileRatio enables the same ratio check at file scope: at most one
@@ -104,7 +110,7 @@ func checkFile(pass *analysis.Pass, file *ast.File, settings Settings) error {
 		checkFileBudget(pass, file, settings, src)
 	}
 
-	if settings.MaxFuncLines <= 0 && settings.MaxFuncRatio <= 0 {
+	if settings.MaxFuncLines <= 0 && settings.MaxFuncRatio <= 0 && settings.MaxFuncDocLines <= 0 {
 		return nil
 	}
 
@@ -125,7 +131,7 @@ func checkFileBudget(pass *analysis.Pass, file *ast.File, settings Settings, src
 	}
 
 	if settings.MaxFileLines > 0 && total > settings.MaxFileLines {
-		pass.Reportf(file.Package, "file %q has %d comment lines, max allowed is %d",
+		pass.Reportf(file.Package, "file %q has %d comment lines, max allowed is %d (max-file-lines)",
 			fileName(pass, file), total, settings.MaxFileLines)
 	}
 
@@ -133,31 +139,37 @@ func checkFileBudget(pass *analysis.Pass, file *ast.File, settings Settings, src
 		code := src.codeLineCount(1, src.lineCount())
 		if allowed, violated := ratioViolation(total, code, settings.MaxFileRatio, settings.RatioMinLines); violated {
 			pass.Reportf(file.Package,
-				"file %q has %d comment lines for %d code lines, max allowed is %d",
+				"file %q has %d comment lines for %d code lines, max allowed is %d (max-file-ratio)",
 				fileName(pass, file), total, code, allowed)
 		}
 	}
 }
 
 func checkScope(pass *analysis.Pass, scope *funcScope, settings Settings, src *sourceLines) {
-	total := commentLineCount(pass.Fset, scope.doc)
+	doc := commentLineCount(pass.Fset, scope.doc)
+	body := 0
 	for _, group := range scope.comments {
-		total += commentLineCount(pass.Fset, group)
+		body += commentLineCount(pass.Fset, group)
 	}
 
-	if settings.MaxFuncLines > 0 && total > settings.MaxFuncLines {
-		pass.Reportf(scope.node.Pos(), "%s has %d comment lines, max allowed is %d",
-			scope.name, total, settings.MaxFuncLines)
+	if settings.MaxFuncDocLines > 0 && doc > settings.MaxFuncDocLines {
+		pass.Reportf(scope.node.Pos(), "%s has %d doc comment lines, max allowed is %d (max-func-doc-lines)",
+			scope.name, doc, settings.MaxFuncDocLines)
+	}
+
+	if settings.MaxFuncLines > 0 && body > settings.MaxFuncLines {
+		pass.Reportf(scope.node.Pos(), "%s has %d body comment lines, max allowed is %d (max-func-lines)",
+			scope.name, body, settings.MaxFuncLines)
 	}
 
 	if settings.MaxFuncRatio > 0 && src != nil {
 		start := pass.Fset.Position(scope.node.Pos()).Line
 		end := pass.Fset.Position(scope.node.End()).Line
 		code := src.codeLineCount(start, end)
-		if allowed, violated := ratioViolation(total, code, settings.MaxFuncRatio, settings.RatioMinLines); violated {
+		if allowed, violated := ratioViolation(body, code, settings.MaxFuncRatio, settings.RatioMinLines); violated {
 			pass.Reportf(scope.node.Pos(),
-				"%s has %d comment lines for %d code lines, max allowed is %d",
-				scope.name, total, code, allowed)
+				"%s has %d body comment lines for %d code lines, max allowed is %d (max-func-ratio)",
+				scope.name, body, code, allowed)
 		}
 	}
 }
