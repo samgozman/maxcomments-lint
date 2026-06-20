@@ -44,6 +44,12 @@ type Settings struct {
 	// path. A file whose path matches any pattern is skipped entirely. An
 	// empty list checks every file.
 	Ignore []string `json:"ignore"`
+
+	// CheckGenerated controls whether machine-generated files are checked.
+	// Generated files (those carrying the standard
+	// "// Code generated ... DO NOT EDIT." marker) are skipped by default;
+	// set this to true to check them like any other file.
+	CheckGenerated bool `json:"check-generated"`
 }
 
 // NewAnalyzer builds the comment-budget analyzer for the given settings.
@@ -66,6 +72,10 @@ func run(pass *analysis.Pass, settings Settings) (any, error) {
 
 	for _, file := range pass.Files {
 		if matchesAny(ignore, fileName(pass, file)) {
+			continue
+		}
+
+		if !settings.CheckGenerated && ast.IsGenerated(file) {
 			continue
 		}
 

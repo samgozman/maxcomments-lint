@@ -64,3 +64,15 @@ func TestAnalyzer_IgnorePaths(t *testing.T) {
 	})
 	analysistest.Run(t, testdata, analyzer, "ignore")
 }
+
+func TestAnalyzer_SkipsGeneratedByDefault(t *testing.T) {
+	testdata := analysistest.TestData()
+	analyzer := maxcomments.NewAnalyzer(maxcomments.Settings{MaxFuncLines: 2})
+	analysistest.Run(t, testdata, analyzer, "generated")
+}
+
+func TestAnalyzer_ChecksGeneratedWhenEnabled(t *testing.T) {
+	testdata := analysistest.TestData()
+	analyzer := maxcomments.NewAnalyzer(maxcomments.Settings{MaxFuncLines: 2, CheckGenerated: true})
+	analysistest.Run(t, testdata, analyzer, "generatedcheck")
+}

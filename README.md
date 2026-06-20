@@ -61,6 +61,7 @@ You can use either or both, at function and/or file scope:
 | `max-file-ratio`  | int      | `0` (disabled) | Ratio: allow 1 comment line per this many code lines, per file.                            |
 | `ratio-min-lines` | int      | `0` (no floor) | Skip the ratio checks for any scope with fewer than this many code lines.                  |
 | `ignore`          | []string | `[]` (none)    | Regular expressions matched against each file's path; matching files are skipped entirely. |
+| `check-generated` | bool     | `false`        | Check machine-generated files too. By default generated files are skipped.                 |
 
 ### Suppressing with `//nolint`
 
@@ -85,6 +86,23 @@ settings:
 ```
 
 An invalid regex is reported as an error rather than silently ignored.
+
+### Generated files
+
+Machine-generated files are **skipped by default** — there's no point nudging
+a code generator toward fewer comments. A file counts as generated when it
+carries the [standard Go marker](https://pkg.go.dev/cmd/go#hdr-Generate_Go_files_by_processing_source)
+(`// Code generated ... DO NOT EDIT.`) before its `package` clause.
+
+To lint generated files like any other code, opt in:
+
+```yaml
+settings:
+  check-generated: true
+```
+
+This is independent of `ignore`: explicit `ignore` patterns always apply, and
+generated files are skipped on top of them unless `check-generated` is set.
 
 ## Using it in a project
 
