@@ -8,4 +8,4 @@ package nolintfile
 // FuncDocOver has three doc comment lines
 // which exceed the function budget of two,
 // and no nolint of its own.
-func FuncDocOver() {} // want `function "FuncDocOver" has 3 comment lines, max allowed is 2`
+func FuncDocOver() {} // want `function "FuncDocOver" has 3 doc comment lines, max allowed is 2 \(func.doc-lines\)`

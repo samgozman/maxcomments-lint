@@ -7,9 +7,9 @@ import (
 )
 
 // nolintForMaxcomments reports whether a comment is a golangci-lint nolint
-// directive that suppresses this linter: a bare "//nolint", "//nolint:all",
-// or a "//nolint:..." list that names "maxcomments" (or "all"). An optional
-// "// explanation" trailing the linter list is ignored.
+// directive that suppresses this linter: a bare "//nolint", "//nolint:all", or
+// a "//nolint:..." list naming "maxcomments" (or "all"), ignoring any trailing
+// "// explanation".
 func nolintForMaxcomments(text string) bool {
 	if !strings.HasPrefix(text, "//nolint") {
 		return false
@@ -26,7 +26,7 @@ func nolintForMaxcomments(text string) bool {
 
 	list := strings.TrimPrefix(rest, ":")
 	if i := strings.Index(list, "//"); i >= 0 {
-		list = list[:i] // drop the "// explanation" suffix
+		list = list[:i]
 	}
 
 	for _, name := range strings.Split(list, ",") {
@@ -41,12 +41,8 @@ func nolintForMaxcomments(text string) bool {
 
 // nolintInfo records where maxcomments nolint directives appear in a file.
 type nolintInfo struct {
-	// fileSuppressed is true when a nolint directive appears before the
-	// package clause, suppressing the file-level checks.
-	fileSuppressed bool
-	// lines holds every line number carrying a maxcomments nolint directive,
-	// used to suppress a function reported on that line.
-	lines map[int]bool
+	fileSuppressed bool         // a directive before the package clause suppresses file checks
+	lines          map[int]bool // line numbers carrying a directive, to suppress a func on that line
 }
 
 // collectNolint scans the file's comments for maxcomments nolint directives.
@@ -69,8 +65,8 @@ func collectNolint(fset *token.FileSet, file *ast.File) nolintInfo {
 	return info
 }
 
-// suppressesScope reports whether a function's diagnostics are suppressed by a
-// nolint directive in its doc comment or on its signature line.
+// suppressesScope reports whether a nolint directive in the function's doc
+// comment or on its signature line suppresses its diagnostics.
 func (info nolintInfo) suppressesScope(fset *token.FileSet, scope *funcScope) bool {
 	if groupHasNolint(scope.doc) {
 		return true

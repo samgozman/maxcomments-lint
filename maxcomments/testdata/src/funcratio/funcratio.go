@@ -1,6 +1,6 @@
 package funcratio
 
-func CommentHeavy() { // want `function "CommentHeavy" has 3 comment lines for 4 code lines, max allowed is 1`
+func CommentHeavy() { // want `function "CommentHeavy" has 3 body comment lines for 4 code lines, max allowed is 1 \(func.ratio\)`
 	// extra one
 	// extra two
 	a := 1

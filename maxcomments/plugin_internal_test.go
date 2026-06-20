@@ -7,7 +7,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	p, err := New(map[string]any{"max-func-lines": 5})
+	p, err := New(map[string]any{"func": map[string]any{"body-lines": 5}})
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
