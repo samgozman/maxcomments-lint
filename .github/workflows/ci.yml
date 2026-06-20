@@ -21,7 +21,7 @@ jobs:
         # Oldest supported (the go.mod floor) and current stable.
         go: [ "1.23.x", "stable" ]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-go@v6
         with:
@@ -42,7 +42,7 @@ jobs:
     name: Build plugin & self-lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-go@v6
         with:
