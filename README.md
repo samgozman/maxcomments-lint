@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/samgozman/maxcomments-lint/actions/workflows/ci.yml/badge.svg)](https://github.com/samgozman/maxcomments-lint/actions/workflows/ci.yml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/samgozman/maxcomments-lint.svg)](https://pkg.go.dev/github.com/samgozman/maxcomments-lint)
+[![codecov](https://codecov.io/gh/samgozman/maxcomments-lint/graph/badge.svg?token=u4ogknIYUs)](https://codecov.io/gh/samgozman/maxcomments-lint)
 
 A [golangci-lint](https://golangci-lint.run) module plugin that caps the
 number of **comment lines** allowed per function and/or per file.
