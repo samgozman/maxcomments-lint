@@ -4,61 +4,71 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/samgozman/maxcomments-lint.svg)](https://pkg.go.dev/github.com/samgozman/maxcomments-lint)
 [![codecov](https://codecov.io/gh/samgozman/maxcomments-lint/graph/badge.svg?token=u4ogknIYUs)](https://codecov.io/gh/samgozman/maxcomments-lint)
 
-A [golangci-lint](https://golangci-lint.run) module plugin that caps the
-number of **comment lines** allowed per function and/or per file.
+A [golangci-lint](https://golangci-lint.run) plugin that limits how many
+comment lines a function or file may contain.
 
-It doesn't judge comment *style* (use [godot](https://github.com/tetafro/godot)
-or `gocritic`/`revive` for that), only comment *quantity*. The idea is to catch
-functions that have drifted into narrating every line instead of being
-simplified or split up.
+It flags functions that narrate every line instead of being split up or
+simplified:
 
-> **Handy against AI-generated noise.** Coding assistants love to narrate code
-> with a comment on nearly every line. Capping comment density nudges that
-> output back toward self-explanatory code, plus the occasional comment that
-> actually helps. It's a useful guardrail in AI-assisted projects. And because
-> it's a compiled check, it's *deterministic*: it enforces the limit on every
-> run, unlike an instruction in your prompt or rules file that the model may or
-> may not honour.
+```go
+// BAD: a comment on nearly every line
+func process(items []Item) error {
+	// loop over all items
+	for _, item := range items {
+		// skip invalid items
+		if !item.Valid() {
+			continue
+		}
+		// save the item
+		if err := save(item); err != nil {
+			// return the error
+			return err
+		}
+	}
+	return nil
+}
+```
 
-## How it counts
+It checks comment *quantity*, not *style*. For style, use
+[godot](https://github.com/tetafro/godot), `gocritic`, or `revive`.
 
-Every function is checked independently. A "function" here is any named
-function/method (`FuncDecl`) **and** any anonymous function literal/closure.
-Each comment is attributed to the *innermost* function that contains it, so a
-closure's comments are counted against the closure and never folded into the
-function that encloses it.
+The cap can be a flat number of comment lines or a *ratio* (at most one comment
+line per N lines of code), enforced per function and/or per file. So a small
+helper and a 200-line function can be held to proportional budgets instead of
+the same fixed limit.
 
-For each function it tracks two **separate** totals:
+**Especially useful against AI-generated noise.** Coding assistants tend to
+comment nearly every line. Capping comment density nudges that output back
+toward self-explanatory code. And it's a compiled check, so it's
+*deterministic*: it enforces the limit on every run, unlike a prompt or rules
+file the model may ignore.
 
-- **doc comments**: the block directly above `func ...`, governed by
-  `func.doc-lines`
-- **body comments**: every comment group whose source range falls inside the
-  function body (minus anything that belongs to a nested closure), governed by
-  `func.body-lines` and `func.ratio`
+## How it works
 
-Keeping them apart means a long, legitimate doc comment doesn't push a function
-over the budget meant to catch line-by-line *body* narration, and vice versa.
+Set a limit, get a warning when code exceeds it. Limits come in two flavours,
+each usable per **function** and/or per **file**:
 
-Multi-line `/* */` blocks and stacks of consecutive `//` lines are each
-counted by their actual line span, not by "number of `//` tokens."
+- **Hard cap:** a fixed maximum number of comment lines
+  (`func.body-lines`, `func.doc-lines`, `file.lines`).
+- **Ratio:** at most one comment line per *N* code lines
+  (`func.ratio`, `file.ratio`); the budget is `floor(codeLines / N)`. A *code
+  line* is a non-blank line that isn't itself a comment. Use `ratio-min-lines`
+  to skip small scopes.
 
-File-level counting (optional) sums every comment group in the file,
-including the package doc comment.
+### What counts as a comment
 
-**Directive lines are never counted.** Machine directives such as
-`//nolint:...`, `//go:generate`, `//go:embed`, and `//line ...` are tooling
-instructions, not documentation, so they are excluded from every total.
-
-## Two modes
-
-You can use either or both, at function and/or file scope:
-
-1. **Hard cap**: a fixed maximum number of comment lines
-   (`func.body-lines`, `func.doc-lines`, `file.lines`).
-2. **Ratio**: at most one comment line per *N* code lines
-   (`func.ratio`, `file.ratio`). The allowed budget is
-   `floor(codeLines / N)`. A **code line** is a physical, non-blank line that
-   is not itself a comment line. Use `ratio-min-lines` to exempt small scopes.
+- **Doc vs. body are counted separately.** A function's doc comment (the block
+  above `func`) is governed by `func.doc-lines`; everything inside the body by
+  `func.body-lines`/`func.ratio`. So a long, legitimate doc comment never trips
+  the budget meant for line-by-line body narration.
+- **Closures count on their own.** Each comment belongs to the *innermost*
+  function containing it, so a closure's comments are never folded into the
+  enclosing function.
+- **Lines, not tokens.** A `/* */` block or a stack of `//` lines counts by its
+  actual line span.
+- **Directives are never counted.** `//nolint:...`, `//go:generate`,
+  `//go:embed`, `//line ...` and the like are tooling instructions, not docs.
+- **File scope** sums every comment in the file, including the package doc.
 
 ## Settings
 
@@ -258,15 +268,15 @@ Each behaviour has its own `analysistest` fixture under
 - No autofix, by design. Fix flagged comments yourself, or ask an AI to
   summarise them down.
 - A function-level `//nolint` on a `func` *signature line* is matched by line
-  number — the same way golangci-lint applies `//nolint` to the diagnostics it
+  number, the same way golangci-lint applies `//nolint` to the diagnostics it
   receives. In the rare case where two `func` tokens share one physical source
   line (e.g. a one-line closure nested in another function), a trailing
-  `//nolint` on that line suppresses both. Keep each function on its own line —
-  which `gofmt` already does — to scope the directive precisely.
+  `//nolint` on that line suppresses both. Keep each function on its own line
+  (which `gofmt` already does) to scope the directive precisely.
 
 ## Contributing
 
-Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the
 workflow, project layout, and testing conventions. Notable changes are recorded
 in [CHANGELOG.md](CHANGELOG.md).
 
